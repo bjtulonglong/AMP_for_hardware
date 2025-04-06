@@ -156,7 +156,7 @@ class A1AMPCfgPPO( LeggedRobotCfgPPO ):
         experiment_name = 'a1_amp_example'
         algorithm_class_name = 'AMPPPO'
         policy_class_name = 'ActorCritic'
-        max_iterations = 500000 # number of policy updates
+        max_iterations = 20000 # number of policy updates
 
         amp_reward_coef = 2.0
         amp_motion_files = MOTION_FILES
