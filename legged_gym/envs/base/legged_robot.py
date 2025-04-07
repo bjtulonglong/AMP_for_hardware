@@ -277,8 +277,11 @@ class LeggedRobot(BaseTask):
             self.privileged_obs_buf += (2 * torch.rand_like(self.privileged_obs_buf) - 1) * self.noise_scale_vec
 
         # Remove velocity observations from policy observation.
-        if self.num_obs == self.num_privileged_obs - 6:
-            self.obs_buf = self.privileged_obs_buf[:, 6:]
+        # if self.num_obs == self.num_privileged_obs - 6:
+        #     self.obs_buf = self.privileged_obs_buf[:, 6:]
+        # Remove lin velocity observations from policy observation.
+        if self.num_obs == self.num_privileged_obs - 3:
+            self.obs_buf = self.privileged_obs_buf[:, 3:]
         else:
             self.obs_buf = torch.clone(self.privileged_obs_buf)
 
@@ -582,11 +585,11 @@ class LeggedRobot(BaseTask):
         noise_vec[3:6] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel
         noise_vec[6:9] = noise_scales.gravity * noise_level
         noise_vec[9:12] = 0. # commands
-        noise_vec[12:24] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
-        noise_vec[24:36] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
-        noise_vec[36:48] = 0. # previous actions
+        noise_vec[12:25] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
+        noise_vec[25:38] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
+        noise_vec[38:51] = 0. # previous actions
         if self.cfg.terrain.measure_heights:
-            noise_vec[48:235] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
+            noise_vec[51:238] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
         return noise_vec
 
     #----------------------------------------
@@ -672,6 +675,7 @@ class LeggedRobot(BaseTask):
 
 
     def foot_position_in_hip_frame(self, angles, l_hip_sign=1):
+        # TODO
         theta_ab, theta_hip, theta_knee = angles[:, 0], angles[:, 1], angles[:, 2]
         l_up = 0.2
         l_low = 0.2
@@ -691,7 +695,8 @@ class LeggedRobot(BaseTask):
 
     def foot_positions_in_base_frame(self, foot_angles):
         # TODO
-        foot_positions = torch.zeros_like(foot_angles)
+        foot_positions = torch.zeros(self.num_envs, 12, dtype=torch.float, device=self.device, requires_grad=False)
+        # foot_positions = torch.zeros_like(foot_angles)
         # for i in range(4):
         #     foot_positions[:, i * 3:i * 3 + 3].copy_(
         #         self.foot_position_in_hip_frame(foot_angles[:, i * 3: i * 3 + 3], l_hip_sign=(-1)**(i)))

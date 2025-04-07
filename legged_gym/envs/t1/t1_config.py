@@ -33,11 +33,11 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 class T1RoughCfg( LeggedRobotCfg ):
 
     class env( LeggedRobotCfg.env ):
-        num_envs = 5480
+        num_envs = 1024
         include_history_steps = None  # Number of steps of history to include.
-        num_observations = 235
-        num_privileged_obs = 235
-        num_actions = 11
+        num_observations = 238
+        num_privileged_obs = 238
+        num_actions = 13
         reference_state_initialization = False
         # reference_state_initialization_prob = 0.85
         # amp_motion_files = MOTION_FILES
