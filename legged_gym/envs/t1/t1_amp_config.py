@@ -37,10 +37,11 @@ MOTION_FILES = glob.glob('datasets/mocap_motions/*')
 class T1AMPCfg( LeggedRobotCfg ):
 
     class env( LeggedRobotCfg.env ):
-        num_envs = 5480
+        num_envs = 1024
         include_history_steps = None  # Number of steps of history to include.
-        num_observations = 42
-        num_privileged_obs = 48
+        num_observations = 48
+        num_privileged_obs = 51
+        num_actions = 13
         reference_state_initialization = True
         reference_state_initialization_prob = 0.85
         amp_motion_files = MOTION_FILES
@@ -73,14 +74,14 @@ class T1AMPCfg( LeggedRobotCfg ):
         # action scale: target angle = actionScale * action + defaultAngle
         action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
-        decimation = 6
+        decimation = 4
 
     class terrain( LeggedRobotCfg.terrain ):
         mesh_type = 'plane'
         measure_heights = False
 
     class asset( LeggedRobotCfg.asset ):
-        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/t1/urdf/T1_locomotion.urdf'
+        file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/t1/T1_locomotion.urdf'
         foot_name = "foot_link"
         knee_name = 'Shank'
         penalize_contacts_on = ["Trunk"]
@@ -116,8 +117,8 @@ class T1AMPCfg( LeggedRobotCfg ):
         base_height_target = 0.68
         class scales( LeggedRobotCfg.rewards.scales ):
             termination = 0.0
-            tracking_lin_vel = 1.5 * 1. / (.005 * 6)
-            tracking_ang_vel = 0.5 * 1. / (.005 * 6)
+            tracking_lin_vel = 1.5 * 1. / (.005 * 4)
+            tracking_ang_vel = 0.5 * 1. / (.005 * 4)
             survival = 0.0 # 存活
             lin_vel_z = 0.0
             ang_vel_xy = 0.0
@@ -166,6 +167,6 @@ class T1AMPCfgPPO( LeggedRobotCfgPPO ):
         amp_task_reward_lerp = 0.3
         amp_discr_hidden_dims = [1024, 512]
 
-        min_normalized_std = [0.05, 0.02, 0.05] * 4
+        min_normalized_std = [0.05, 0.05, 0.05,0.05, 0.05, 0.05,0.05, 0.05, 0.05,0.05, 0.05, 0.05,0.05]
 
   
