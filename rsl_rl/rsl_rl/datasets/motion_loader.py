@@ -17,7 +17,7 @@ class AMPLoader:
     POS_SIZE = 3
     ROT_SIZE = 4
     JOINT_POS_SIZE = 13
-    # TAR_TOE_POS_LOCAL_SIZE = 6
+    TAR_TOE_POS_LOCAL_SIZE = 6
     LINEAR_VEL_SIZE = 3
     ANGULAR_VEL_SIZE = 3
     JOINT_VEL_SIZE = 13
@@ -32,11 +32,11 @@ class AMPLoader:
     JOINT_POSE_START_IDX = ROOT_ROT_END_IDX
     JOINT_POSE_END_IDX = JOINT_POSE_START_IDX + JOINT_POS_SIZE
 
-    # TAR_TOE_POS_LOCAL_START_IDX = JOINT_POSE_END_IDX
-    # TAR_TOE_POS_LOCAL_END_IDX = TAR_TOE_POS_LOCAL_START_IDX + TAR_TOE_POS_LOCAL_SIZE
+    TAR_TOE_POS_LOCAL_START_IDX = JOINT_POSE_END_IDX
+    TAR_TOE_POS_LOCAL_END_IDX = TAR_TOE_POS_LOCAL_START_IDX + TAR_TOE_POS_LOCAL_SIZE
 
-    # LINEAR_VEL_START_IDX = TAR_TOE_POS_LOCAL_END_IDX
-    LINEAR_VEL_START_IDX = JOINT_POSE_END_IDX
+    LINEAR_VEL_START_IDX = TAR_TOE_POS_LOCAL_END_IDX
+    # LINEAR_VEL_START_IDX = JOINT_POSE_END_IDX
     LINEAR_VEL_END_IDX = LINEAR_VEL_START_IDX + LINEAR_VEL_SIZE
 
     ANGULAR_VEL_START_IDX = LINEAR_VEL_END_IDX
@@ -179,7 +179,7 @@ class AMPLoader:
         # fp_fr, fp_fl, fp_rr, fp_rl = np.split(
         #     AMPLoader.get_tar_toe_pos_local_batch(motion_data), 4, axis=1)
         # foot_pos = np.hstack([fp_fl, fp_fr, fp_rl, fp_rr])
-        # foot_pos = AMPLoader.get_tar_toe_pos_local_batch(motion_data)
+        foot_pos = AMPLoader.get_tar_toe_pos_local_batch(motion_data)
 
         lin_vel = AMPLoader.get_linear_vel_batch(motion_data)
         ang_vel = AMPLoader.get_angular_vel_batch(motion_data)
@@ -198,7 +198,7 @@ class AMPLoader:
         #     [root_pos, root_rot, joint_pos, foot_pos, lin_vel, ang_vel,
         #      joint_vel, foot_vel])
         return np.hstack(
-            [root_pos, root_rot, joint_pos, lin_vel, ang_vel,
+            [root_pos, root_rot, joint_pos, foot_pos,lin_vel, ang_vel,
              joint_vel, foot_vel])
 
     def weighted_traj_idx_sample(self):
@@ -405,11 +405,11 @@ class AMPLoader:
     def get_joint_pose_batch(poses):
         return poses[:, AMPLoader.JOINT_POSE_START_IDX:AMPLoader.JOINT_POSE_END_IDX]
 
-    # def get_tar_toe_pos_local(pose):
-    #     return pose[AMPLoader.TAR_TOE_POS_LOCAL_START_IDX:AMPLoader.TAR_TOE_POS_LOCAL_END_IDX]
+    def get_tar_toe_pos_local(pose):
+        return pose[AMPLoader.TAR_TOE_POS_LOCAL_START_IDX:AMPLoader.TAR_TOE_POS_LOCAL_END_IDX]
 
-    # def get_tar_toe_pos_local_batch(poses):
-    #     return poses[:, AMPLoader.TAR_TOE_POS_LOCAL_START_IDX:AMPLoader.TAR_TOE_POS_LOCAL_END_IDX]
+    def get_tar_toe_pos_local_batch(poses):
+        return poses[:, AMPLoader.TAR_TOE_POS_LOCAL_START_IDX:AMPLoader.TAR_TOE_POS_LOCAL_END_IDX]
 
     def get_linear_vel(pose):
         return pose[AMPLoader.LINEAR_VEL_START_IDX:AMPLoader.LINEAR_VEL_END_IDX]

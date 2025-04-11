@@ -146,6 +146,7 @@ class LeggedRobot(BaseTask):
         """
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
+        self.gym.refresh_rigid_body_state_tensor(self.sim)
 
         self.episode_length_buf += 1
         self.common_step_counter += 1
@@ -291,17 +292,39 @@ class LeggedRobot(BaseTask):
 
     def get_amp_observations(self):
         joint_pos = self.dof_pos
-        # foot_pos = self.foot_positions_in_base_frame(self.dof_pos).to(self.device)
-        feet_pos_flat = self.feet_pos.view(self.feet_pos.shape[0], -1)
-        root_pos_repeated = self.root_states[:, 0:3].repeat(1, self.feet_pos.shape[1])
-        foot_pos_relative = feet_pos_flat - root_pos_repeated
-        # print(foot_pos_relative)
+        # # foot_pos = self.foot_positions_in_base_frame(self.dof_pos).to(self.device)
+        feet_pos_flat = self.feet_pos.view(self.feet_pos.shape[0], -1) # torch.Size([4096, 6]) 
+        # print(feet_pos_flat)
+        root_pos_repeated = self.root_states[:, 0:3].repeat(1, self.feet_pos.shape[1]) # torch.Size([4096, 6])
+        foot_pos_relative_W = feet_pos_flat - root_pos_repeated # torch.Size([4096, 6])
+        # print(foot_pos_relative_W)
+        # 将 foot_pos_relative_W 按照每 3 个值分割为 2 组
+        foot_pos_leg_1 = foot_pos_relative_W[:, :3]  # 前 3 个值是第一个腿的位置
+        foot_pos_leg_2 = foot_pos_relative_W[:, 3:]  # 后 3 个值是第二个腿的位置
+
+        # 查看原始数据
+        # print("Original foot_pos_leg_1:", foot_pos_leg_1)
+        # print("Original foot_pos_leg_2:", foot_pos_leg_2)
+
+        # 使用 quat_rotate_inverse 来转换这两个腿的位置
+        foot_pos_leg_1_base = quat_rotate_inverse(self.base_quat, foot_pos_leg_1)
+        foot_pos_leg_2_base = quat_rotate_inverse(self.base_quat, foot_pos_leg_2)
+
+        # 输出旋转后的数据
+        # print("Transformed foot_pos_leg_1_base:", foot_pos_leg_1_base)
+        # print("Transformed foot_pos_leg_2_base:", foot_pos_leg_2_base)
+
+        # 将两个腿的位置合并成一个 6 维的张量
+        foot_pos_relative_B = torch.cat([foot_pos_leg_1_base, foot_pos_leg_2_base], dim=1)
+        print(foot_pos_relative_B)
+        
+
         base_lin_vel = self.base_lin_vel
         base_ang_vel = self.base_ang_vel
         joint_vel = self.dof_vel
         z_pos = self.root_states[:, 2:3]
         # return torch.cat((joint_pos, foot_pos_relative, base_lin_vel, base_ang_vel, joint_vel, z_pos), dim=-1)
-        return torch.cat((joint_pos, base_lin_vel, base_ang_vel, joint_vel, z_pos), dim=-1)
+        return torch.cat((joint_pos , foot_pos_relative_B,base_lin_vel, base_ang_vel, joint_vel, z_pos), dim=-1)
 
 
     def create_sim(self):
