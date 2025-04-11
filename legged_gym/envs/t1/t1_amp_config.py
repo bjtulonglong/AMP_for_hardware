@@ -119,14 +119,15 @@ class T1AMPCfg( LeggedRobotCfg ):
         class scales( LeggedRobotCfg.rewards.scales ):
             termination = 0.0
             tracking_lin_vel = 75
-            tracking_ang_vel = 10
+            tracking_lin_y_vel = -1
+            tracking_ang_vel = -1
             # tracking_lin_vel = 1.5
             # tracking_ang_vel = 0.5
-            survival = 0.0 # 存活
+            survival = 20.0 # 存活
             lin_vel_z = -0.0
             ang_vel_xy = -0.0
             orientation = -0.0
-            torques = -0.0
+            torques = -0.0000025
             dof_vel = -0.0
             dof_acc = -0.0
             base_height = -1.0 
@@ -167,12 +168,12 @@ class T1AMPCfg( LeggedRobotCfg ):
 class T1AMPCfgPPO( LeggedRobotCfgPPO ):
     runner_class_name = 'AMPOnPolicyRunner'
     class algorithm( LeggedRobotCfgPPO.algorithm ):
-        entropy_coef = 0.01
+        entropy_coef = 0.0
         amp_replay_buffer_size = 1000000
         num_learning_epochs = 5
         num_mini_batches = 4
         disc_coef = 5  # 5
-        bounds_loss_coef = 10
+        bounds_loss_coef = 2
 
     class runner( LeggedRobotCfgPPO.runner ):
         run_name = ''
@@ -187,7 +188,7 @@ class T1AMPCfgPPO( LeggedRobotCfgPPO ):
         amp_task_reward_lerp = 0.5
         amp_discr_hidden_dims = [1024, 512]
 
-        disc_grad_penalty = 5 # original
+        disc_grad_penalty = 5 # original 10
 
         min_normalized_std = [0.05, 0.05, 0.05,0.05, 0.05, 0.05,0.05, 0.05, 0.05,0.05, 0.05, 0.05,0.05]
 

@@ -178,6 +178,7 @@ class AMPPPO:
         mean_policy_pred = 0
         mean_expert_pred = 0
         mean_bound_loss = 0
+        mean_std_loss = 0
         if self.actor_critic.is_recurrent:
             generator = self.storage.reccurent_mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
         else:
@@ -265,6 +266,10 @@ class AMPPPO:
                 self.bounds_loss_coef if self.bounds_loss_coef is not None else 0.0
                 )
 
+                # Std regularization penalty (to prevent std from growing too large)
+                std_penalty_coef = 1e-3  # You can tune this value
+                std_penalty = std_penalty_coef * sigma_batch.mean()
+
                 # Compute total loss.
                 loss = (
                     surrogate_loss 
@@ -272,6 +277,7 @@ class AMPPPO:
                     - self.entropy_coef * entropy_batch.mean()
                     + self.disc_coef *(amp_loss + grad_pen_loss)
                     + bounds_loss_coef * b_loss
+                    + std_penalty
                     )
 
                 # Gradient step
@@ -294,6 +300,7 @@ class AMPPPO:
                 mean_policy_pred += policy_d.mean().item()
                 mean_expert_pred += expert_d.mean().item()
                 mean_bound_loss  += b_loss.mean().item()
+                mean_std_loss += std_penalty.mean().item()
 
         num_updates = self.num_learning_epochs * self.num_mini_batches
         mean_value_loss /= num_updates
@@ -303,6 +310,7 @@ class AMPPPO:
         mean_policy_pred /= num_updates
         mean_expert_pred /= num_updates
         mean_bound_loss /= num_updates
+        mean_std_loss /= num_updates
         self.storage.clear()
 
-        return mean_value_loss, mean_surrogate_loss, mean_amp_loss, mean_grad_pen_loss, mean_policy_pred, mean_expert_pred ,mean_bound_loss
+        return mean_value_loss, mean_surrogate_loss, mean_amp_loss, mean_grad_pen_loss, mean_policy_pred, mean_expert_pred ,mean_bound_loss ,mean_std_loss
