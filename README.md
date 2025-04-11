@@ -16,7 +16,7 @@ Paper: https://drive.google.com/file/d/1kFm79nMmrc0ZIiH0XO8_HV-fj73agheO/view?us
     - `conda activate amp_t1`
 2. Install pytorch :
     - `pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cu121 `
-    - `pip install pybullet==3.2.1 opencv-python==4.5.5.64 tensorboard `
+    - `pip install pybullet==3.2.1 opencv-python==4.5.5.64 tensorboard numpy==1.23`
 3. Install Isaac Gym
    - Download and install Isaac Gym Preview 4 (Preview 2 will not work!) from https://developer.nvidia.com/isaac-gym
    - `cd isaacgym/python && pip install -e .`
@@ -27,6 +27,19 @@ Paper: https://drive.google.com/file/d/1kFm79nMmrc0ZIiH0XO8_HV-fj73agheO/view?us
    -  `cd AMP_for_hardware/rsl_rl && pip install -e .` 
 5. Install legged_gym
    - `cd ../ && pip install -e .`
+6. Configure the environment to handle shared libraries, otherwise cannot found shared library of `libpython3.8`:
+
+    ```sh
+    $ cd $CONDA_PREFIX
+    $ mkdir -p ./etc/conda/activate.d
+    $ vim ./etc/conda/activate.d/env_vars.sh  # Add the following line
+    export OLD_LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
+    $ mkdir -p ./etc/conda/deactivate.d
+    $ vim ./etc/conda/deactivate.d/env_vars.sh  # Add the following line
+    export LD_LIBRARY_PATH=${OLD_LD_LIBRARY_PATH}
+    unset OLD_LD_LIBRARY_PATH
+    ```
 
 ### CODE STRUCTURE ###
 1. Each environment is defined by an env file (`legged_robot.py`) and a config file (`legged_robot_config.py`). The config file contains two classes: one conatianing all the environment parameters (`LeggedRobotCfg`) and one for the training parameters (`LeggedRobotCfgPPo`).  

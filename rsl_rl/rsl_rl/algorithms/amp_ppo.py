@@ -58,6 +58,9 @@ class AMPPPO:
                  device='cpu',
                  amp_replay_buffer_size=100000,
                  min_std=None,
+                 disc_grad_penalty=10.0,
+                 disc_coef=5,
+                 bounds_loss_coef=None,
                  ):
 
         self.device = device
@@ -101,6 +104,9 @@ class AMPPPO:
         self.lam = lam
         self.max_grad_norm = max_grad_norm
         self.use_clipped_value_loss = use_clipped_value_loss
+        self.disc_grad_penalty = disc_grad_penalty
+        self.disc_coef = disc_coef
+        self.bounds_loss_coef = bounds_loss_coef
 
     def init_storage(self, num_envs, num_transitions_per_env, actor_obs_shape, critic_obs_shape, action_shape):
         self.storage = RolloutStorage(
@@ -150,6 +156,20 @@ class AMPPPO:
         last_values = self.actor_critic.evaluate(aug_last_critic_obs).detach()
         self.storage.compute_returns(last_values, self.gamma, self.lam)
 
+    def bound_loss(self, mu):
+        if self.bounds_loss_coef is not None:
+            soft_bound = 1.0
+            mu_loss_high = (
+                torch.maximum(mu - soft_bound, torch.tensor(0, device=self.device)) ** 2
+            )
+            mu_loss_low = (
+                torch.minimum(mu + soft_bound, torch.tensor(0, device=self.device)) ** 2
+            )
+            b_loss = (mu_loss_low + mu_loss_high).sum()
+        else:
+            b_loss = 0
+        return b_loss
+
     def update(self):
         mean_value_loss = 0
         mean_surrogate_loss = 0
@@ -157,6 +177,7 @@ class AMPPPO:
         mean_grad_pen_loss = 0
         mean_policy_pred = 0
         mean_expert_pred = 0
+        mean_bound_loss = 0
         if self.actor_critic.is_recurrent:
             generator = self.storage.reccurent_mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
         else:
@@ -219,6 +240,10 @@ class AMPPPO:
                 # Discriminator loss.
                 policy_state, policy_next_state = sample_amp_policy
                 expert_state, expert_next_state = sample_amp_expert
+
+                # policy_state_unnorm = torch.clone(policy_state)
+                # expert_state_unnorm = torch.clone(expert_state)
+
                 if self.amp_normalizer is not None:
                     with torch.no_grad():
                         policy_state = self.amp_normalizer.normalize_torch(policy_state, self.device)
@@ -233,14 +258,21 @@ class AMPPPO:
                     policy_d, -1 * torch.ones(policy_d.size(), device=self.device))
                 amp_loss = 0.5 * (expert_loss + policy_loss)
                 grad_pen_loss = self.discriminator.compute_grad_pen(
-                    *sample_amp_expert, lambda_=10)
+                    *sample_amp_expert, lambda_=self.disc_grad_penalty)  # lambda_=10.
+                
+                b_loss = self.bound_loss(mu_batch)
+                bounds_loss_coef = (
+                self.bounds_loss_coef if self.bounds_loss_coef is not None else 0.0
+                )
 
                 # Compute total loss.
                 loss = (
-                    surrogate_loss +
-                    self.value_loss_coef * value_loss -
-                    self.entropy_coef * entropy_batch.mean() +
-                    amp_loss + grad_pen_loss)
+                    surrogate_loss 
+                    + self.value_loss_coef * value_loss
+                    - self.entropy_coef * entropy_batch.mean()
+                    + self.disc_coef *(amp_loss + grad_pen_loss)
+                    + bounds_loss_coef * b_loss
+                    )
 
                 # Gradient step
                 self.optimizer.zero_grad()
@@ -261,6 +293,7 @@ class AMPPPO:
                 mean_grad_pen_loss += grad_pen_loss.item()
                 mean_policy_pred += policy_d.mean().item()
                 mean_expert_pred += expert_d.mean().item()
+                mean_bound_loss  += b_loss.mean().item()
 
         num_updates = self.num_learning_epochs * self.num_mini_batches
         mean_value_loss /= num_updates
@@ -269,6 +302,7 @@ class AMPPPO:
         mean_grad_pen_loss /= num_updates
         mean_policy_pred /= num_updates
         mean_expert_pred /= num_updates
+        mean_bound_loss /= num_updates
         self.storage.clear()
 
-        return mean_value_loss, mean_surrogate_loss, mean_amp_loss, mean_grad_pen_loss, mean_policy_pred, mean_expert_pred
+        return mean_value_loss, mean_surrogate_loss, mean_amp_loss, mean_grad_pen_loss, mean_policy_pred, mean_expert_pred ,mean_bound_loss

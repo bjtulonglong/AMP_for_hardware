@@ -170,6 +170,7 @@ class LeggedRobot(BaseTask):
         self.last_actions[:] = self.actions[:]
         self.last_dof_vel[:] = self.dof_vel[:]
         self.last_root_vel[:] = self.root_states[:, 7:13]
+        self.last_feet_pos[:] = self.feet_pos
 
         if self.viewer and self.enable_viewer_sync and self.debug_viz:
             self._draw_debug_vis()
@@ -180,6 +181,8 @@ class LeggedRobot(BaseTask):
         """ Check if environments need to be reset
         """
         self.reset_buf = torch.any(torch.norm(self.contact_forces[:, self.termination_contact_indices, :], dim=-1) > 1., dim=1)
+        self.reset_buf |= self.root_states[:, 7:13].square().sum(dim=-1) > 50.
+        self.reset_buf |= self.root_states[:, 2] < 0.5 # TODO
         self.time_out_buf = self.episode_length_buf > self.max_episode_length # no terminal reward for time-outs
         self.reset_buf |= self.time_out_buf
 
@@ -414,6 +417,25 @@ class LeggedRobot(BaseTask):
         self.feet_pos[:] = self.body_states[:, self.feet_indices, 0:3]
         self.feet_quat[:] = self.body_states[:, self.feet_indices, 3:7]
 
+        roll, _, yaw = get_euler_xyz(self.feet_quat.reshape(-1, 4))
+        self.feet_roll[:] = (roll.reshape(self.num_envs, len(self.feet_indices)) + torch.pi) % (2 * torch.pi) - torch.pi
+        self.feet_yaw[:] = (yaw.reshape(self.num_envs, len(self.feet_indices)) + torch.pi) % (2 * torch.pi) - torch.pi
+        # feet_edge_relative_pos = (
+        #     to_torch(self.cfg.asset.feet_edge_pos, device=self.device)
+        #     .unsqueeze(0)
+        #     .unsqueeze(0)
+        #     .expand(self.num_envs, len(self.feet_indices), -1, -1)
+        # )
+        # expanded_feet_pos = self.feet_pos.unsqueeze(2).expand(-1, -1, feet_edge_relative_pos.shape[2], -1).reshape(-1, 3)
+        # expanded_feet_quat = self.feet_quat.unsqueeze(2).expand(-1, -1, feet_edge_relative_pos.shape[2], -1).reshape(-1, 4)
+        # feet_edge_pos = expanded_feet_pos + quat_rotate(expanded_feet_quat, feet_edge_relative_pos.reshape(-1, 3))
+        # self.feet_contact[:] = torch.any(
+        #     (feet_edge_pos[:, 2] - self.terrain.terrain_heights(feet_edge_pos) < 0.01).reshape(
+        #         self.num_envs, len(self.feet_indices), feet_edge_relative_pos.shape[2]
+        #     ),
+        #     dim=2,
+        # )
+
     def _resample_commands(self, env_ids):
         """ Randommly select commands of some environments
 
@@ -428,7 +450,7 @@ class LeggedRobot(BaseTask):
             self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], self.command_ranges["ang_vel_yaw"][1], (len(env_ids), 1), device=self.device).squeeze(1)
 
         # set small commands to zero
-        self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.2).unsqueeze(1)
+        self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.1).unsqueeze(1)
 
     def _compute_torques(self, actions):
         """ Compute torques from actions.
@@ -509,6 +531,12 @@ class LeggedRobot(BaseTask):
         else:
             self.root_states[env_ids] = self.base_init_state
             self.root_states[env_ids, :3] += self.env_origins[env_ids]
+        
+        self.root_states[env_ids, 3:7] = quat_from_euler_xyz(
+            torch.zeros(len(env_ids), dtype=torch.float, device=self.device),
+            torch.zeros(len(env_ids), dtype=torch.float, device=self.device),
+            torch.rand(len(env_ids), device=self.device) * (2 * torch.pi),
+        )
         # base velocities
         self.root_states[env_ids, 7:13] = torch_rand_float(-0.5, 0.5, (len(env_ids), 6), device=self.device) # [7:10]: lin vel, [10:13]: ang vel
         env_ids_int32 = env_ids.to(dtype=torch.int32)
@@ -653,6 +681,9 @@ class LeggedRobot(BaseTask):
         self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
         self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
+        self.last_feet_pos = torch.zeros_like(self.feet_pos)
+        self.feet_roll = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.float, device=self.device)
+        self.feet_yaw = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.float, device=self.device)
         if self.cfg.terrain.measure_heights:
             self.height_points = self._init_height_points()
         self.measured_heights = 0
@@ -1103,36 +1134,36 @@ class LeggedRobot(BaseTask):
         # Penalize waist position
         return torch.square(self.dof_pos[:, 0])
     
-    # def _reward_feet_slip(self):
-    #     # Penalize feet velocities when contact
-    #     return (
-    #         torch.sum(
-    #             torch.square((self.last_feet_pos - self.feet_pos) / self.dt).sum(dim=-1) * self.feet_contact.float(),
-    #             dim=-1,
-    #         )
-    #         * (self.episode_length_buf > 1).float()
-    #     )
+    def _reward_feet_slip(self):
+        # Penalize feet velocities when contact
+        return (
+            torch.sum(
+                torch.square((self.last_feet_pos - self.feet_pos) / self.dt).sum(dim=-1) * (self.contact_forces[:, self.feet_indices, 2] > 1).float(),
+                dim=-1,
+            )
+            * (self.episode_length_buf > 1).float()
+        )
 
-    # def _reward_feet_vel_z(self):
-    #     return torch.sum(torch.square((self.last_feet_pos - self.feet_pos) / self.dt)[:, :, 2], dim=-1)
+    def _reward_feet_vel_z(self):
+        return torch.sum(torch.square((self.last_feet_pos - self.feet_pos) / self.dt)[:, :, 2], dim=-1)
 
-    # def _reward_feet_roll(self):
-    #     return torch.sum(torch.square(self.feet_roll), dim=-1)
+    def _reward_feet_roll(self):
+        return torch.sum(torch.square(self.feet_roll), dim=-1)
 
-    # def _reward_feet_yaw_diff(self):
-    #     return torch.square((self.feet_yaw[:, 1] - self.feet_yaw[:, 0] + torch.pi) % (2 * torch.pi) - torch.pi)
+    def _reward_feet_yaw_diff(self):
+        return torch.square((self.feet_yaw[:, 1] - self.feet_yaw[:, 0] + torch.pi) % (2 * torch.pi) - torch.pi)
 
-    # def _reward_feet_yaw_mean(self):
-    #     feet_yaw_mean = self.feet_yaw.mean(dim=-1) + torch.pi * (torch.abs(self.feet_yaw[:, 1] - self.feet_yaw[:, 0]) > torch.pi)
-    #     return torch.square((get_euler_xyz(self.base_quat)[2] - feet_yaw_mean + torch.pi) % (2 * torch.pi) - torch.pi)
+    def _reward_feet_yaw_mean(self):
+        feet_yaw_mean = self.feet_yaw.mean(dim=-1) + torch.pi * (torch.abs(self.feet_yaw[:, 1] - self.feet_yaw[:, 0]) > torch.pi)
+        return torch.square((get_euler_xyz(self.base_quat)[2] - feet_yaw_mean + torch.pi) % (2 * torch.pi) - torch.pi)
 
-    # def _reward_feet_distance(self):
-    #     _, _, base_yaw = get_euler_xyz(self.base_quat)
-    #     feet_distance = torch.abs(
-    #         torch.cos(base_yaw) * (self.feet_pos[:, 1, 1] - self.feet_pos[:, 0, 1])
-    #         - torch.sin(base_yaw) * (self.feet_pos[:, 1, 0] - self.feet_pos[:, 0, 0])
-    #     )
-    #     return torch.clip(self.cfg["rewards"]["feet_distance_ref"] - feet_distance, min=0.0, max=0.1)
+    def _reward_feet_distance(self):
+        _, _, base_yaw = get_euler_xyz(self.base_quat)
+        feet_distance = torch.abs(
+            torch.cos(base_yaw) * (self.feet_pos[:, 1, 1] - self.feet_pos[:, 0, 1])
+            - torch.sin(base_yaw) * (self.feet_pos[:, 1, 0] - self.feet_pos[:, 0, 0])
+        )
+        return torch.clip(0.2 - feet_distance, min=0.0, max=0.1)
 
     # def _reward_feet_swing(self):
     #     left_swing = (torch.abs(self.gait_process - 0.25) < 0.5 * self.cfg["rewards"]["swing_period"]) & (self.gait_frequency > 1.0e-8)

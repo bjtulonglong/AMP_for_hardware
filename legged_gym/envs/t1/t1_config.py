@@ -83,6 +83,14 @@ class T1RoughCfg( LeggedRobotCfg ):
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
         flip_visual_attachments = False
 
+        feet_edge_pos = {
+            (0.1215,  0.05, -0.03)  ,
+            (  0.1215, -0.05, -0.03 ),
+            (-0.1015,  0.05, -0.03 ),
+            ( -0.1015, -0.05, -0.03 )
+        }
+
+
     class terrain(LeggedRobotCfg.terrain):
         mesh_type = 'plane' # none, plane, heightfield or trimesh
         curriculum = False
@@ -91,9 +99,42 @@ class T1RoughCfg( LeggedRobotCfg ):
         soft_dof_pos_limit = 0.9
         base_height_target = 0.68
         class scales( LeggedRobotCfg.rewards.scales ):
-            survival = 10.0
+            # survival = 2.0
             torques = -0.0002
-            dof_pos_limits = -10.0
+            dof_pos_limits = -1.0
+            termination = 0.0
+            tracking_lin_vel = 5.0
+            tracking_ang_vel = 1.0
+            # tracking_lin_vel = 1.5
+            # tracking_ang_vel = 0.5
+            survival = 1.0 # 存活
+            lin_vel_z = -2.0
+            ang_vel_xy = -0.5
+            orientation = -5.0
+            # torques = -0.0
+            dof_vel = -1.e-4
+            dof_acc = -1.e-7
+            base_height = -20.0 
+            feet_air_time = 1.0
+            
+            # feet_stumble = 0.0 
+            action_rate = -0.01
+            # stand_still = 0.0
+            dof_pos_limits = -1.0
+            # add
+            torque_tiredness = -1.e-2
+            # dof_pos_ref= -1.e-2
+            # root_acc= -1.e-4
+            # collision = 0.0
+            waist_pos= -1.
+            feet_slip = -0.1
+            feet_vel_z = -0.1
+            feet_yaw_diff = -1.
+            feet_yaw_mean = -1.
+            feet_roll = -0.1
+            feet_distance = -1.
+            # feet_swing = 2.5
+            # stand_still = -1.
 
     class normalization:
         class obs_scales:
