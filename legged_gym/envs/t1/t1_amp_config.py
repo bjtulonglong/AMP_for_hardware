@@ -31,7 +31,7 @@ import glob
 
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
-MOTION_FILES = glob.glob('datasets/mocap_motions/*')
+MOTION_FILES = glob.glob('datasets/mocap_motions/omni_walking/*')
 
 
 class T1AMPCfg( LeggedRobotCfg ):
@@ -119,8 +119,8 @@ class T1AMPCfg( LeggedRobotCfg ):
         class scales( LeggedRobotCfg.rewards.scales ):
             termination = 0.0
             tracking_lin_vel = 75
-            tracking_lin_y_vel = -1
-            tracking_ang_vel = -1
+            tracking_lin_y_vel = 25
+            tracking_ang_vel = 50
             # tracking_lin_vel = 1.5
             # tracking_ang_vel = 0.5
             survival = 0.0 # 存活
@@ -143,14 +143,14 @@ class T1AMPCfg( LeggedRobotCfg ):
             # root_acc= -1.e-4
             # collision = 0.0
             # waist_pos= -1.
-            feet_slip = -0.1
-            feet_vel_z = -0.1
-            feet_yaw_diff = -1.
-            feet_yaw_mean = -1.
-            feet_roll = -0.1
+            # feet_slip = -0.1
+            # feet_vel_z = -0.1
+            # feet_yaw_diff = -1.
+            # feet_yaw_mean = -1.
+            # feet_roll = -0.1
             feet_distance = -5.
             # feet_swing = 2.5
-            stand_still = -1.
+            stand_still = -10.
 
 
     class commands:
@@ -161,8 +161,8 @@ class T1AMPCfg( LeggedRobotCfg ):
         heading_command = False # if true: compute ang vel command from heading error
         class ranges:
             lin_vel_x = [0.0, 1.0] # min max [m/s]
-            lin_vel_y = [-0.0, 0.0]   # min max [m/s]
-            ang_vel_yaw = [-0.0, 0.0]    # min max [rad/s]
+            lin_vel_y = [-0.3, 0.3]   # min max [m/s]
+            ang_vel_yaw = [-1.5, 1.5]    # min max [rad/s]
             heading = [-3.14, 3.14]
 
 class T1AMPCfgPPO( LeggedRobotCfgPPO ):

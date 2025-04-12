@@ -1113,13 +1113,13 @@ class LeggedRobot(BaseTask):
     def _reward_tracking_lin_y_vel(self):
         # Tracking of linear velocity commands (xy axes)
         lin_vel_error = torch.square(self.commands[:, 1] - self.base_lin_vel[:, 1])
-        return lin_vel_error
+        return torch.exp(-lin_vel_error/self.cfg.rewards.tracking_sigma)
     
     def _reward_tracking_ang_vel(self):
         # Tracking of angular velocity commands (yaw) 
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
-        # return torch.exp(-ang_vel_error/self.cfg.rewards.tracking_sigma)
-        return ang_vel_error
+        return torch.exp(-ang_vel_error/self.cfg.rewards.tracking_sigma)
+        # return ang_vel_error
 
     def _reward_feet_air_time(self):
         # Reward long steps

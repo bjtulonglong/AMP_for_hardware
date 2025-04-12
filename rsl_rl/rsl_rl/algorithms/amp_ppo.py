@@ -267,7 +267,8 @@ class AMPPPO:
                 )
 
                 # Std regularization penalty (to prevent std from growing too large)
-                std_penalty_coef = 1e-3  # You can tune this value
+                # std_penalty_coef = 1e-3  # You can tune this value
+                std_penalty_coef = 0.
                 std_penalty = std_penalty_coef * sigma_batch.mean()
 
                 # Compute total loss.
