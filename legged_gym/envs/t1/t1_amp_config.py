@@ -138,19 +138,19 @@ class T1AMPCfg( LeggedRobotCfg ):
             stand_still = 0.0
             dof_pos_limits = -1.0
             # add
-            # torque_tiredness = -1.e-2
+            torque_tiredness = -1.e-2
             # dof_pos_ref= -1.e-2
             # root_acc= -1.e-4
             # collision = 0.0
             # waist_pos= -1.
-            # feet_slip = -0.1
-            # feet_vel_z = -0.1
-            # feet_yaw_diff = -1.
-            # feet_yaw_mean = -1.
-            # feet_roll = -0.1
+            feet_slip = -0.1
+            feet_vel_z = -0.1
+            feet_yaw_diff = -1.
+            feet_yaw_mean = -1.
+            feet_roll = -0.1
             feet_distance = -5.
             # feet_swing = 2.5
-            # stand_still = -1.
+            stand_still = -1.
 
 
     class commands:
@@ -173,7 +173,7 @@ class T1AMPCfgPPO( LeggedRobotCfgPPO ):
         num_learning_epochs = 5
         num_mini_batches = 4
         disc_coef = 5  # 5
-        bounds_loss_coef = 2
+        bounds_loss_coef = 5
 
     class runner( LeggedRobotCfgPPO.runner ):
         run_name = ''
@@ -185,10 +185,10 @@ class T1AMPCfgPPO( LeggedRobotCfgPPO ):
         amp_reward_coef = 2.0
         amp_motion_files = MOTION_FILES
         amp_num_preload_transitions = 2000000
-        amp_task_reward_lerp = 0.5
+        amp_task_reward_lerp = 0.6
         amp_discr_hidden_dims = [1024, 512]
 
-        disc_grad_penalty = 5 # original 10
+        disc_grad_penalty = 10 # original 10
 
         min_normalized_std = [0.05, 0.05, 0.05,0.05, 0.05, 0.05,0.05, 0.05, 0.05,0.05, 0.05, 0.05,0.05]
 

@@ -316,7 +316,7 @@ class LeggedRobot(BaseTask):
 
         # 将两个腿的位置合并成一个 6 维的张量
         foot_pos_relative_B = torch.cat([foot_pos_leg_1_base, foot_pos_leg_2_base], dim=1)
-        print(foot_pos_relative_B)
+        # print(foot_pos_relative_B)
         
 
         base_lin_vel = self.base_lin_vel

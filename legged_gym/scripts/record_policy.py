@@ -95,7 +95,7 @@ def play(args):
             env.gym.write_viewer_image_to_file(env.viewer, filename)
             img = cv2.imread(filename)
             if video is None:
-                video = cv2.VideoWriter('record.mp4', cv2.VideoWriter_fourcc(*'MP4V'), int(1 / env.dt), (img.shape[1],img.shape[0]))
+                video = cv2.VideoWriter('record.mp4', cv2.VideoWriter_fourcc(*'mp4v'), int(1 / env.dt), (img.shape[1],img.shape[0]))
             video.write(img)
             img_idx += 1 
 
@@ -103,6 +103,6 @@ def play(args):
 
 if __name__ == '__main__':
     EXPORT_POLICY = True
-    RECORD_FRAMES = False
+    RECORD_FRAMES = True
     args = get_args()
     play(args)
